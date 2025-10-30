@@ -24,7 +24,7 @@ UPLOAD_FOLDER = 'uploads'
 STATIC_FOLDER = 'static'
 OUTPUT_FOLDER = os.path.join(STATIC_FOLDER, 'outputs') 
 DATABASE_FILE = 'standing_exercise.json'
-ALLOWED_EXTENSIONS = {'mp3'} # <-- 確保這一行存在
+ALLOWED_EXTENSIONS = {'mp3'} 
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -168,27 +168,27 @@ def create_plot_visualization(filename_no_ext, raw_audio, segments):
         print(f"Error creating plot: {e}")
         return None
 
-# --- *** 影片合成函式 (已修正) *** ---
+# --- *** 影片合成函式 (已修正跳動問題) *** ---
 def create_workout_video(music_filepath, playlist, output_filename):
     """
-    合成影片的核心函式 (已修正 WinError 32)
+    合成影片的核心函式 (已修正 WinError 32 和 影片跳動問題)
     """
     video_clips = []
     temp_files = []
-    temp_gif_clips = [] # <-- 新增：用來追蹤原始的 GIF clip 物件
+    temp_gif_clips = [] 
     
-    # <-- 新增：在 try 區塊外宣告變數，以便 finally 區塊能存取
     audio_clip = None
     final_video_no_audio = None
     final_video = None
+    
+    # *** 變動：定義一個固定的影片尺寸 (寬, 高) ***
+    TARGET_SIZE = (640, 480) 
 
     try:
         print("--- 開始合成影片 ---")
         
-        # 1. 載入音訊
         audio_clip = mp.AudioFileClip(music_filepath)
         
-        # 2. 遍歷播放清單，下載並建立影片片段
         for i, item in enumerate(playlist):
             gif_url = item['exercise']['gif_url']
             duration = item['duration']
@@ -205,30 +205,44 @@ def create_workout_video(music_filepath, playlist, output_filename):
                 temp_files.append(temp_gif_path)
             except Exception as e:
                 print(f"警告：下載 GIF 失敗 {gif_url}。錯誤: {e}。將跳過此片段。")
-                continue # 跳過這個 GIF
+                continue 
 
-            # --- 載入並循環 GIF ---
             gif = mp.VideoFileClip(temp_gif_path)
-            temp_gif_clips.append(gif) # <-- 新增：追蹤此 clip
+            temp_gif_clips.append(gif)
             
-            gif_resized = gif.resize(width=640) 
-            looped_gif = gif_resized.fx(mp.vfx.loop, duration=duration)
+            # --- *** 核心修正：調整大小並加入黑邊 (Padding) *** ---
             
-            video_clips.append(looped_gif)
+            # 1. 調整 GIF 大小，使其能「放進」TARGET_SIZE，同時保持長寬比
+            #    Pillow 9.5.0 (moviepy 1.0.3 依賴的) 使用 Image.ANTIALIAS
+            #    我們在 P.S. 中已降級 Pillow==9.5.0
+            gif_resized = gif.resize(height=TARGET_SIZE[1]) # 先以高度為準
+            if gif_resized.w > TARGET_SIZE[0]:
+                gif_resized = gif.resize(width=TARGET_SIZE[0]) # 如果太寬，改以寬度為準
+
+            # 2. 建立一個固定大小的黑色背景
+            background = mp.ColorClip(size=TARGET_SIZE, 
+                                      color=(0, 0, 0), 
+                                      duration=duration)
+
+            # 3. 將調整大小後的 GIF 循環播放，並放置在黑色背景的中央
+            looped_gif = gif_resized.fx(mp.vfx.loop, duration=duration).set_position(('center', 'center'))
+
+            # 4. 合成片段：將 GIF 疊在黑色背景上
+            final_segment = mp.CompositeVideoClip([background, looped_gif], size=TARGET_SIZE)
+            
+            video_clips.append(final_segment)
+            # (我們不再需要關閉 background 或 looped_gif，因為它們在 final_segment 中)
 
         if not video_clips:
             print("錯誤：沒有任何影片片段可合成。")
             return None
 
-        # 3. 拼接所有影片片段
         print("拼接影片片段...")
         final_video_no_audio = mp.concatenate_videoclips(video_clips)
         
-        # 4. 加上完整的音訊
         print("加入音訊...")
         final_video = final_video_no_audio.set_audio(audio_clip)
         
-        # 5. 寫入 MP4 檔案
         output_filepath = os.path.join(OUTPUT_FOLDER, output_filename)
         print(f"開始渲染 MP4: {output_filepath} ... (這會花很長間)")
         
@@ -247,20 +261,16 @@ def create_workout_video(music_filepath, playlist, output_filename):
         print(f"[嚴重錯誤] 影片合成失敗: {e}")
         return None
     finally:
-        # --- (*** 這是關鍵的修正區塊 ***) ---
         print("--- 開始清理暫存檔案 ---")
         
         # 1. 關閉所有 moviepy 物件 (釋放檔案鎖定)
-        if final_video:
-            final_video.close()
-        if final_video_no_audio:
-            final_video_no_audio.close()
-        if audio_clip:
-            audio_clip.close()
+        if final_video: final_video.close()
+        if final_video_no_audio: final_video_no_audio.close()
+        if audio_clip: audio_clip.close()
             
         for clip in video_clips:
             clip.close()
-        for clip in temp_gif_clips: # 關閉原始的 GIF clip
+        for clip in temp_gif_clips:
             clip.close()
                 
         # 2. 清理暫存的 GIF 檔案
@@ -271,17 +281,15 @@ def create_workout_video(music_filepath, playlist, output_filename):
                     os.remove(f)
                     print(f"已刪除: {f}")
                 except Exception as e:
-                    # 即使關閉了，Windows 有時仍需一點時間，故加入例外處理
-                    print(f"刪除 {f} 失敗: {e} (檔案可能仍被鎖定，但可手動刪除)")
+                    print(f"刪除 {f} 失敗: {e}")
             else:
-                print(f"找不到檔案 {f} (可能未成功下載)")
+                print(f"找不到檔案 {f}")
 
 # --- 路由 (Routes) ---
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        # ... (檔案上傳檢查 ... 保持不變) ...
         if 'music_file' not in request.files:
             flash('錯誤：請求中沒有檔案欄位。', 'error')
             return redirect(request.url) 
@@ -289,8 +297,6 @@ def index():
         if file.filename == '':
             flash('錯誤：您尚未選擇任何檔案。', 'error')
             return redirect(request.url)
-        
-        # (修正：這裡的檢查邏輯反了)
         if not file or not allowed_file(file.filename):
             flash(f'錯誤：不支援的檔案類型。目前只接受 .mp3 檔案', 'error')
             return redirect(request.url)
@@ -300,12 +306,9 @@ def index():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             difficulty = request.form.get('difficulty')
-            
             analysis_results = analyze_music_segments(filepath)
-            
             plot_url = None
             matched_playlist_results = None 
-            
             if analysis_results['success']:
                 filename_no_ext = os.path.splitext(filename)[0]
                 plot_url = create_plot_visualization(
@@ -318,7 +321,6 @@ def index():
                     difficulty,
                     EXERCISE_DATABASE
                 )
-
             return render_template('results.html', 
                                    analysis_results=analysis_results,
                                    filename=filename,
@@ -326,13 +328,10 @@ def index():
                                    plot_url=plot_url,
                                    matched_playlist_results=matched_playlist_results 
                                   )
-        
         except Exception as e:
             print(f"--- 處理 POST 請求時發生未預期錯誤: {e} ---")
             flash(f'處理檔案時發生嚴重錯誤: {e}', 'error')
             return redirect(request.url)
-
-    # --- GET 請求 (初始載入頁面) ---
     return render_template('index.html')
 
 
@@ -341,22 +340,17 @@ def index():
 def generate_video():
     music_filename = request.args.get('filename')
     difficulty = request.args.get('difficulty')
-    
     if not music_filename or not difficulty:
         flash('錯誤：缺少音樂檔案名稱或難度。', 'error')
         return redirect(url_for('index'))
-        
     music_filepath = os.path.join(app.config['UPLOAD_FOLDER'], music_filename)
-    
     if not os.path.exists(music_filepath):
         flash('錯誤：找不到音樂檔案，請重新上傳。', 'error')
         return redirect(url_for('index'))
-
     analysis_results = analyze_music_segments(music_filepath)
     if not analysis_results['success']:
         flash(f'錯誤：重新分析音樂失敗: {analysis_results.error}', 'error')
         return redirect(url_for('index'))
-        
     matched_playlist_results = get_matched_exercises(
         analysis_results['segments'],
         difficulty,
@@ -365,22 +359,18 @@ def generate_video():
     if not matched_playlist_results['success']:
         flash(f'錯誤：重新配對動作失敗: {matched_playlist_results.error}', 'error')
         return redirect(url_for('index'))
-        
     music_filename_no_ext = os.path.splitext(music_filename)[0]
     output_filename = f"workout_{music_filename_no_ext}.mp4"
-    
     video_file = create_workout_video(
         music_filepath,
         matched_playlist_results['playlist'],
         output_filename
     )
-    
     if video_file:
         return redirect(url_for('play_video', videofile=video_file))
     else:
         flash('錯誤：影片合成失敗，請檢查伺服器日誌。', 'error')
         return redirect(url_for('index'))
-
 
 # --- (影片播放路由 /play ... 保持不變) ---
 @app.route('/play')
@@ -389,11 +379,8 @@ def play_video():
     if not video_filename:
         flash('錯誤：沒有指定影片檔案。', 'error')
         return redirect(url_for('index'))
-        
     video_url = url_for('static', filename=f'outputs/{video_filename}')
-    
     return render_template('play.html', video_url=video_url, video_filename=video_filename)
-
 
 # --- 執行 App ---
 if __name__ == '__main__':

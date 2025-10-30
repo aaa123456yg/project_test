@@ -19,33 +19,13 @@
         .playlist-card h4 { margin: 0 0 5px 0; color: #0056b3; }
         .playlist-card p { margin: 0; font-size: 0.9em; }
 
-        /* *** 按鈕樣式 (共用) *** */
-        .action-button {
-            display: inline-block;
-            padding: 12px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .back-link {
-            background: #6c757d;
-            margin-right: 10px;
-        }
+        .action-button { display: inline-block; padding: 12px 20px; font-size: 16px; font-weight: bold; color: white; text-decoration: none; border-radius: 5px; text-align: center; }
+        .back-link { background: #6c757d; margin-right: 10px; }
         .back-link:hover { background: #5a6268; }
-
-        /* *** 新增：開始合成按鈕 *** */
-        .generate-button {
-            background: #28a745; /* 綠色 */
-        }
-        .generate-button:hover {
-            background: #218838;
-        }
+        .generate-button { background: #28a745; }
+        .generate-button:hover { background: #218838; }
         
-        /* *** 新增：載入中提示 *** */
-        /* *** 新增：載入中提示 *** */
+        /* --- *** 變動：合成中提示 (樣式更新) *** --- */
         #generating-overlay {
             display: none; /* 預設隱藏 */
             position: fixed;
@@ -56,12 +36,42 @@
             background: rgba(0, 0, 0, 0.7);
             color: white;
             z-index: 1000;
-            /* 'display: flex;' 已經從這裡被刪除了 
-               (JavaScript 會在點擊時才加上它)
-            */
+            
+            /* 改為 Flexbox 置中 */
+            display: none; 
+            flex-direction: column; /* 讓文字在進度條上方 */
             justify-content: center;
             align-items: center;
+        }
+        #generating-overlay p {
             font-size: 1.5em;
+            text-align: center;
+            margin-bottom: 20px; /* 與進度條間距 */
+        }
+
+        /* --- *** 新增：動畫進度條 (從 index.html 複製過來) *** --- */
+        .progress-bar {
+            width: 80%; /* 進度條寬度 */
+            max-width: 500px;
+            height: 20px;
+            background-color: #555; /* 深色背景 */
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar-inner {
+            width: 100%;
+            height: 100%;
+            background-color: #007BFF; /* 藍色 */
+            position: absolute;
+            left: -100%;
+            animation: move-progress 2s linear infinite;
+        }
+        
+        /* CSS 動畫 */
+        @keyframes move-progress {
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
 
     </style>
@@ -72,6 +82,9 @@
             ⏳ 影片合成中，請稍候... <br>
             (這可能需要數分鐘，請勿關閉此頁面)
         </p>
+        <div class="progress-bar">
+            <div class="progress-bar-inner"></div>
+        </div>
     </div>
 
 
@@ -130,7 +143,6 @@
 
             <div>
                 <a href="/" class="action-button back-link">返回上傳頁面</a>
-                
                 <a href="{{ url_for('generate_video', filename=filename, difficulty=difficulty) }}" 
                    class="action-button generate-button"
                    id="generate-btn">
@@ -145,7 +157,7 @@
 
     <script>
         document.getElementById('generate-btn').addEventListener('click', function() {
-            // 顯示全螢幕的載入提示
+            // 顯示全螢幕的載入提示 (使用 'flex' 來置中)
             document.getElementById('generating-overlay').style.display = 'flex';
         });
     </script>
