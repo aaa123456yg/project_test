@@ -7,25 +7,44 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
         .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .results-box { margin-top: 20px; background: #eee; padding: 15px; border-radius: 4px; }
+        .results-box { margin-bottom: 20px; background: #eee; padding: 15px; border-radius: 4px; }
         .results-box h3 { margin-top: 0; }
-        .plot-image {
-            width: 100%;
-            height: auto;
-            border: 1px solid #ccc;
-            margin-top: 15px;
-        }
+        .plot-image { width: 100%; height: auto; border: 1px solid #ccc; margin-top: 15px; }
         .error { color: red; font-weight: bold; }
-        .back-link {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 15px;
-            background: #6c757d;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-        }
+        .back-link { display: inline-block; margin-top: 20px; padding: 10px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; }
         .back-link:hover { background: #5a6268; }
+
+        /* *** 新增：GIF 配對清單的樣式 *** */
+        .playlist-grid {
+            display: grid;
+            grid-template-columns: 1fr; /* 每行一個 */
+            gap: 15px;
+        }
+        .playlist-card {
+            display: flex; /* 讓圖片和文字並排 */
+            align-items: center;
+            border: 1px solid #ddd;
+            background: #fdfdfd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .playlist-card img {
+            width: 150px;
+            height: 120px;
+            object-fit: cover;
+            flex-shrink: 0; /* 防止圖片被壓縮 */
+        }
+        .playlist-card .info {
+            padding: 15px;
+        }
+        .playlist-card h4 {
+            margin: 0 0 5px 0;
+            color: #0056b3;
+        }
+        .playlist-card p {
+            margin: 0;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -60,6 +79,32 @@
                 {% endif %}
             </div>
 
+            <div class="results-box">
+                <h3>配對動作清單 (隨機預覽)</h3>
+                
+                {% if matched_playlist_results and matched_playlist_results.success %}
+                    <div class="playlist-grid">
+                        
+                        {% for item in matched_playlist_results.playlist %}
+                        <div class="playlist-card">
+                            <img src="{{ item.exercise.gif_url }}" alt="{{ item.exercise.name }}">
+                            <div class="info">
+                                <h4>{{ item.segment_label }} ({{ "%.2f"|format(item.duration) }}s)</h4>
+                                <p><strong>配對動作:</strong> {{ item.exercise.name }}</p>
+                                <p><strong>難度:</strong> {{ difficulty }}</g>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                    </div>
+                {% else %}
+                    <p class="error">
+                        配對動作時發生錯誤: 
+                        {{ matched_playlist_results.error if matched_playlist_results else '未知錯誤' }}
+                    </p>
+                {% endif %}
+            </div>
+
         {% else %}
             <div class="results-box">
                 <h3>分析失敗</h3>
@@ -68,7 +113,6 @@
         {% endif %}
 
         <a href="/" class="back-link">返回上傳頁面</a>
-
     </div>
 </body>
 </html>
