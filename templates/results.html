@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析結果</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .results-box { margin-top: 20px; background: #eee; padding: 15px; border-radius: 4px; }
+        .results-box h3 { margin-top: 0; }
+        .plot-image {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            margin-top: 15px;
+        }
+        .error { color: red; font-weight: bold; }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 15px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .back-link:hover { background: #5a6268; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>分析結果</h2>
+        
+        <div class="results-box">
+            <p><strong>上傳檔案:</strong> {{ filename }}</p>
+            <p><strong>選擇難度:</strong> {{ difficulty }}</p>
+        </div>
+
+        {% if analysis_results and analysis_results.success %}
+            
+            <div class="results-box">
+                <h3>音樂分段 (秒)</h3>
+                <ul>
+                    {% for segment in analysis_results.segments %}
+                        <li>
+                            <b>{{ segment.label }}</b>: 
+                            {{ "%.2f"|format(segment.start) }}s - {{ "%.2f"|format(segment.end) }}s
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="results-box">
+                <h3>視覺化圖譜</h3>
+                {% if plot_url %}
+                    <img src="{{ url_for('static', filename=plot_url) }}" alt="音樂分析圖" class="plot-image">
+                {% else %}
+                    <p class="error">繪製圖表時發生錯誤。</p>
+                {% endif %}
+            </div>
+
+        {% else %}
+            <div class="results-box">
+                <h3>分析失敗</h3>
+                <p class="error">{{ analysis_results.error }}</p>
+            </div>
+        {% endif %}
+
+        <a href="/" class="back-link">返回上傳頁面</a>
+
+    </div>
+</body>
+</html>
