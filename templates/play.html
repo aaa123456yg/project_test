@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>開始運動</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px; /* 影片最大寬度 */
+        }
+        h1 {
+            text-align: center;
+            color: #eee;
+        }
+        
+        /* 影片播放器 */
+        video {
+            width: 100%; /* 響應式寬度 */
+            height: auto;
+            border-radius: 8px;
+            background: #000;
+        }
+        
+        .links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .action-button {
+            display: inline-block;
+            padding: 10px 15px;
+            background: #007BFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 0 10px;
+        }
+        .back-link {
+            background: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>開始運動</h1>
+
+        <video controls autoplay>
+            <source src="{{ video_url }}" type="video/mp4">
+            您的瀏覽器不支援 MP4 影片播放。
+        </video>
+
+        <div class="links">
+            <a href="/" class="action-button back-link">返回首頁</a>
+            
+            <a href="{{ video_url }}" download="{{ video_filename }}" class="action-button">
+                下載影片
+            </a>
+        </div>
+    </div>
+</body>
+</html>

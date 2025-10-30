@@ -11,43 +11,70 @@
         .results-box h3 { margin-top: 0; }
         .plot-image { width: 100%; height: auto; border: 1px solid #ccc; margin-top: 15px; }
         .error { color: red; font-weight: bold; }
-        .back-link { display: inline-block; margin-top: 20px; padding: 10px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; }
+        
+        .playlist-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .playlist-card { display: flex; align-items: center; border: 1px solid #ddd; background: #fdfdfd; border-radius: 5px; overflow: hidden; }
+        .playlist-card img { width: 150px; height: 120px; object-fit: cover; flex-shrink: 0; }
+        .playlist-card .info { padding: 15px; }
+        .playlist-card h4 { margin: 0 0 5px 0; color: #0056b3; }
+        .playlist-card p { margin: 0; font-size: 0.9em; }
+
+        /* *** 按鈕樣式 (共用) *** */
+        .action-button {
+            display: inline-block;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .back-link {
+            background: #6c757d;
+            margin-right: 10px;
+        }
         .back-link:hover { background: #5a6268; }
 
-        /* *** 新增：GIF 配對清單的樣式 *** */
-        .playlist-grid {
-            display: grid;
-            grid-template-columns: 1fr; /* 每行一個 */
-            gap: 15px;
+        /* *** 新增：開始合成按鈕 *** */
+        .generate-button {
+            background: #28a745; /* 綠色 */
         }
-        .playlist-card {
-            display: flex; /* 讓圖片和文字並排 */
+        .generate-button:hover {
+            background: #218838;
+        }
+        
+        /* *** 新增：載入中提示 *** */
+        /* *** 新增：載入中提示 *** */
+        #generating-overlay {
+            display: none; /* 預設隱藏 */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            z-index: 1000;
+            /* 'display: flex;' 已經從這裡被刪除了 
+               (JavaScript 會在點擊時才加上它)
+            */
+            justify-content: center;
             align-items: center;
-            border: 1px solid #ddd;
-            background: #fdfdfd;
-            border-radius: 5px;
-            overflow: hidden;
+            font-size: 1.5em;
         }
-        .playlist-card img {
-            width: 150px;
-            height: 120px;
-            object-fit: cover;
-            flex-shrink: 0; /* 防止圖片被壓縮 */
-        }
-        .playlist-card .info {
-            padding: 15px;
-        }
-        .playlist-card h4 {
-            margin: 0 0 5px 0;
-            color: #0056b3;
-        }
-        .playlist-card p {
-            margin: 0;
-            font-size: 0.9em;
-        }
+
     </style>
 </head>
 <body>
+    <div id="generating-overlay">
+        <p>
+            ⏳ 影片合成中，請稍候... <br>
+            (這可能需要數分鐘，請勿關閉此頁面)
+        </p>
+    </div>
+
+
     <div class="container">
         <h2>分析結果</h2>
         
@@ -69,7 +96,6 @@
                     {% endfor %}
                 </ul>
             </div>
-
             <div class="results-box">
                 <h3>視覺化圖譜</h3>
                 {% if plot_url %}
@@ -81,10 +107,8 @@
 
             <div class="results-box">
                 <h3>配對動作清單 (隨機預覽)</h3>
-                
                 {% if matched_playlist_results and matched_playlist_results.success %}
                     <div class="playlist-grid">
-                        
                         {% for item in matched_playlist_results.playlist %}
                         <div class="playlist-card">
                             <img src="{{ item.exercise.gif_url }}" alt="{{ item.exercise.name }}">
@@ -95,7 +119,6 @@
                             </div>
                         </div>
                         {% endfor %}
-                        
                     </div>
                 {% else %}
                     <p class="error">
@@ -105,14 +128,27 @@
                 {% endif %}
             </div>
 
-        {% else %}
-            <div class="results-box">
-                <h3>分析失敗</h3>
-                <p class="error">{{ analysis_results.error }}</p>
+            <div>
+                <a href="/" class="action-button back-link">返回上傳頁面</a>
+                
+                <a href="{{ url_for('generate_video', filename=filename, difficulty=difficulty) }}" 
+                   class="action-button generate-button"
+                   id="generate-btn">
+                   ► 開始合成影片 (可能需時數分鐘)
+                </a>
             </div>
-        {% endif %}
 
-        <a href="/" class="back-link">返回上傳頁面</a>
+        {% else %}
+            <a href="/" class="action-button back-link">返回上傳頁面</a>
+        {% endif %}
     </div>
+
+    <script>
+        document.getElementById('generate-btn').addEventListener('click', function() {
+            // 顯示全螢幕的載入提示
+            document.getElementById('generating-overlay').style.display = 'flex';
+        });
+    </script>
+
 </body>
 </html>
